@@ -13,8 +13,8 @@ public:
     ~SyncedBitmap();
 
 public:
-    void SetBit(int index, bool val);
-    bool GetBit(int index) ;
+    void SetBit(int bit_index, bool val);
+    bool GetBit(int bit_index) ;
     bool IsFull() ;
 
 public:

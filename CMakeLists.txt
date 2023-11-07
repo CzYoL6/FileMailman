@@ -35,7 +35,8 @@ project(ImguiOpenGL LANGUAGES C CXX)
 
 add_subdirectory(vendor)
 add_subdirectory(gui)
-if(${BUILD_EXAMPLE} )
-    message(${BUILD_EXAMPLE})
-    add_subdirectory(app)
-endif ()
+add_subdirectory(app)
+add_subdirectory(core)
+
+enable_testing()
+add_subdirectory(tests)

@@ -4,19 +4,25 @@
 
 #include <core/BufferBlock.h>
 
-BlockSlice::BlockSlice(int size) : _size(size){
-    _bytes = new char[size];
+
+BlockSlice::BlockSlice(std::vector<unsigned char>::iterator begin, int count) {
+    Read(begin, count);
+}
+
+void BlockSlice::Read(std::vector<unsigned char>::iterator begin, int count) {
+    assert(count == _size);
+    _data_span = std::span<unsigned char>(begin, begin + count);
+}
+
+void BlockSlice::Write(unsigned char *bytes, int count) {
+    assert(count == _data_span.size());
+    memcpy(_data_span.data(), bytes, count);
 }
 
 BlockSlice::~BlockSlice() {
-    delete[] _bytes;
+
 }
 
-void BlockSlice::Load(char *bytes, int count) {
-    assert(count == _size);
-
-    memcpy(_bytes, bytes, count);
-}
 
 BufferBlock::BufferBlock(int slice_count, int slice_size) : _slice_count(slice_count), _slice_size(slice_size){
 

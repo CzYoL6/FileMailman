@@ -21,8 +21,8 @@ public:
     ~BufferBlock();
 
 public:
-    void ReadFromFile(std::ifstream &ifs);
-    void WriteToFile(std::ofstream &ofs);
+    void ReadFromFile(std::ifstream &ifs, int begin_bytes, int count);
+    void WriteToFile(std::ofstream &ofs, int begin_bytes, int count);
     bool IsSliceDone(int id);
     void SetSliceDone(int id);
     bool SliceAllDone();

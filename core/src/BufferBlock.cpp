@@ -32,17 +32,19 @@ void BlockSlice::StartTimeoutTimer(int msec, std::function<void(const boost::sys
 
 
 BufferBlock::~BufferBlock() {
-
+    delete[] _data;
 }
 
-void BufferBlock::ReadFromFile(std::ifstream &ifs) {
+void BufferBlock::ReadFromFile(std::ifstream &ifs, int begin_bytes, int count) {
     assert(ifs.is_open());
-    ifs.read(_data, _bytes_size);
+    ifs.seekg(begin_bytes, std::ios::beg);
+    ifs.read(_data, count);
 }
 
-void BufferBlock::WriteToFile(std::ofstream &ofs) {
+void BufferBlock::WriteToFile(std::ofstream &ofs, int begin_bytes, int count) {
     assert(ofs.is_open());
-    ofs.write(_data, _bytes_size);
+    ofs.seekp(begin_bytes, std::ios::beg);
+    ofs.write(_data,count);
 }
 
 void BufferBlock::SplitIntoSlices() {

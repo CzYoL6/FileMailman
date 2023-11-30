@@ -34,6 +34,7 @@ public:
     char* data()  {return _data;}
     int size() const{return _bytes_size;}
     auto GetBlockSlice(int id){return _slices[id];}
+    int slice_count() const {return _slice_count;}
 
 private:
     int _slice_count;

@@ -8,7 +8,7 @@
 
 Server::Server(uint16_t port)
         : _io_context(), _socket(_io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(),port)),
-          _write_strand(_io_context)
+          _socket_write_strand(_io_context)
 
 {
     do_receive();
@@ -22,12 +22,12 @@ Server::Server(uint16_t port)
 
 void Server::do_receive() {
     _socket.async_receive_from(
-            boost::asio::buffer(_receive_data, max_length), _sender_endpoint,
+            boost::asio::buffer(_receive_data, max_length), _client_endpoint,
             [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                 if (ec) return;
                 auto data_span = handle_data(bytes_recvd);
 
-                _io_context.post(_write_strand.wrap([this, data_span]{
+                _io_context.post(_socket_write_strand.wrap([this, data_span]{
                     queue_send_data(data_span);
                 }));
                 do_receive();
@@ -36,10 +36,10 @@ void Server::do_receive() {
 
 void Server::do_send() {
     _socket.async_send_to(
-    boost::asio::buffer(_send_data_deque.front(), _send_data_deque.front().size()),
+            boost::asio::buffer(_send_data_deque.front(), _send_data_deque.front().size()),
 //    _send_data_deque.front(),
-        _sender_endpoint,
-        _write_strand.wrap([this](const boost::system::error_code& error, std::size_t bytes_transferred){
+        _client_endpoint,
+            _socket_write_strand.wrap([this](const boost::system::error_code& error, std::size_t bytes_transferred){
             send_data_done(error);
         })
     );

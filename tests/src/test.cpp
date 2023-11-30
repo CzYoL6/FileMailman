@@ -3,7 +3,7 @@
 //
 
 #include <gtest/gtest.h>
-#include <core/SyncedBitmap.h>
+#include <core/BufferBlock.h>
 
 //class TestCore : public ::testing::Test{
 //public:
@@ -23,15 +23,17 @@
 //    ASSERT_EQ(a + b, ans) ;
 //}
 //
-TEST(CoreTest, SyncedMapTest){
-    SyncedBitmap synced_bitmap(80, true);
+TEST(CoreTest, BufferBlockTest){
+    boost::asio::io_context temp;
+    BufferBlock buffer_block(1024, 10248, temp);
 
-    ASSERT_EQ(synced_bitmap.IsFull(), true);
-    ASSERT_EQ(synced_bitmap.GetBit(1), true);
+    ASSERT_EQ(buffer_block.IsSliceDone(1), false);
+    buffer_block.SetSliceDone(1);
+    ASSERT_EQ(buffer_block.IsSliceDone(1), true);
 
-    synced_bitmap.SetBit(56, false);
-    ASSERT_EQ(synced_bitmap.GetBit(56), false);
-    ASSERT_EQ(synced_bitmap.IsFull(), false);
-
+    for(int i = 0; i < 11; i++){
+        buffer_block.SetSliceDone(i);
+    }
+    ASSERT_EQ(buffer_block.SliceAllDone(), true);
 
 }

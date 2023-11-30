@@ -11,45 +11,63 @@
 #include <assert.h>
 #include <span>
 #include <vector>
+#include <boost/asio.hpp>
 
 class BlockSlice;
 
 class BufferBlock {
 public:
-    BufferBlock(int slice_size);
+    BufferBlock(int slice_bytes_size, int bytes_size, boost::asio::io_context &io_context);
     ~BufferBlock();
 
 public:
-    void ReadFromFile(std::ifstream &ifs, int begin);
-    void WriteToFile(std::ofstream& ofs, int begin);
+    void ReadFromFile(std::ifstream &ifs);
+    void WriteToFile(std::ofstream &ofs);
+    bool IsSliceDone(int id);
+    void SetSliceDone(int id);
+    bool SliceAllDone();
 
 private:
     void SplitIntoSlices();
 
 public:
-    char* data()  {return _data.data();}
+    char* data()  {return _data;}
+    int size() const{return _bytes_size;}
+    auto GetBlockSlice(int id){return _slices[id];}
 
 private:
     int _slice_count;
     int _slice_size;
     std::vector<std::shared_ptr<BlockSlice>> _slices;
-    std::vector<char> _data;
+    char* _data;
+    int _bytes_size;
+    int _bitmap{0};
+    boost::asio::io_context& _io_context;
 };
 
 class BlockSlice{
 public:
-    BlockSlice(std::vector<char>::iterator begin, int count);
+    BlockSlice(char *begin, int bytes_size, boost::asio::io_context &io_context);
 
     ~BlockSlice();
 
 public:
-    void Read(std::vector<char>::iterator begin, int count);
-    void Write(char* bytes, int count);
+    void ReadOut(char *begin, int count);
+    void WriteIn(char* begin, int count);
+    void StartTimeoutTimer(int msec, std::function<void(const boost::system::error_code&)> function);
+
+public:
+    int retry_times() const{return _retry_times;}
+    void set_retry_times(int v) { _retry_times = v;}
 
 public:
     char* data() const {return _data_span.data();}
 private:
     std::span<char> _data_span;
+    boost::asio::steady_timer _timeout_timer;
+    int _retry_times{0};
+    enum{max_retry_times = 5};
+    boost::asio::io_context& _io_context;
 };
 
 #endif //IMGUIOPENGL_BUFFERBLOCK_H

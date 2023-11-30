@@ -24,8 +24,8 @@ private:
 private:
     boost::asio::io_context _io_context;
     boost::asio::ip::udp::socket _socket;
-    boost::asio::ip::udp::endpoint _sender_endpoint;
-    boost::asio::io_context::strand _write_strand;
+    boost::asio::ip::udp::endpoint _client_endpoint;
+    boost::asio::io_context::strand _socket_write_strand;
     enum { max_length = 1024, thread_pool_size = 16 };
     char _receive_data[max_length];
     std::vector<std::thread> _thread_pool;

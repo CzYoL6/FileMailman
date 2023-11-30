@@ -3,7 +3,7 @@ add_executable(mtest ${srcs})
 target_link_libraries(mtest
         PRIVATE
         GTest::gtest_main
-        core
+#        core
         )
 
 add_test(gtests mtest)

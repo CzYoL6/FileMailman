@@ -1,18 +1,24 @@
 import socket
 
-def udp_client(host, port, message):
+def udp_client(host, port):
     # Create a UDP socket
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Send data to the server
-    client_socket.sendto(message.encode(), (host, port))
-    client_socket.sendto(message.encode(), (host, port))
+    message = bytes([0x01])
+
+    client_socket.sendto(message, (host, port))
 
     # Receive response from the server
     data, server_address = client_socket.recvfrom(1024)
-    print(f"Received response from server: {data.decode()}")
-    data, server_address = client_socket.recvfrom(1024)
-    print(f"Received response from server: {data.decode()}")
+    header = int.from_bytes(data[0:1], byteorder="little")
+    print(header)
+    filenamesize = int.from_bytes(data[1:1 + 4], byteorder="little")
+    print(filenamesize)
+    filename = (data[5:5 + filenamesize]).decode("ascii")
+    print(filename)
+    filesize = int.from_bytes(data[5 + filenamesize:], byteorder="little")
+    print(filesize)
 
     # Close the socket
     client_socket.close()
@@ -22,8 +28,6 @@ if __name__ == "__main__":
     server_host = "localhost"
     server_port = 25690
 
-    # Message to be sent
-    message_to_send = "Hello, UDP Server!"
 
     # Call the UDP client function
-    udp_client(server_host, server_port, message_to_send)
+    udp_client(server_host, server_port)

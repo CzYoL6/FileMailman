@@ -11,25 +11,33 @@
 #include <deque>
 
 class Server{
+    enum { max_length = 1024, thread_pool_size = 16};
+    enum State{ kWaiting, kReady, kTransferring};
+
+
 public:
     Server(uint16_t port);
 
 private:
     void do_receive();
     void do_send();
-    std::span<char> handle_data(std::size_t length);
-    void queue_send_data(std::span<char> data);
+    static std::variant<std::span<char>, std::vector<unsigned char>> handle_data(std::span<char> data);
+    void queue_send_data(const std::variant<std::span<char>, std::vector<unsigned char>> &data);
     void send_data_done(const boost::system::error_code& error);
+
+public:
+    State state() const {return _state;}
 
 private:
     boost::asio::io_context _io_context;
     boost::asio::ip::udp::socket _socket;
     boost::asio::ip::udp::endpoint _client_endpoint;
     boost::asio::io_context::strand _socket_write_strand;
-    enum { max_length = 1024, thread_pool_size = 16 };
     char _receive_data[max_length];
     std::vector<std::thread> _thread_pool;
-    std::deque<std::span<char>> _send_data_deque;
+    std::deque<std::variant<std::span<char>, std::vector<unsigned char>>> _send_data_deque;
+    State _state{State::kWaiting};
+
 };
 
 

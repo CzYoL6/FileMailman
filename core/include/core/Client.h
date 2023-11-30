@@ -10,6 +10,7 @@
 #include<vector>
 
 class Client {
+    enum { max_length = 1024 };
 
 public:
     Client(std::string_view ip, uint16_t port, int block_id);
@@ -27,7 +28,6 @@ private:
     boost::asio::ip::udp::socket _socket;
     boost::asio::ip::udp::endpoint _server_endpoint;
     boost::asio::io_context::strand _socket_write_strand;
-    enum { max_length = 1024 };
     char _receive_data[max_length];
     std::vector<std::thread> _thread_pool;
     std::deque<std::span<char>> _send_data_deque;

@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 #include <core/BufferBlock.h>
+#include <core/Message.h>
 
 //class TestCore : public ::testing::Test{
 //public:
@@ -35,5 +36,11 @@ TEST(CoreTest, BufferBlockTest){
         buffer_block.SetSliceDone(i);
     }
     ASSERT_EQ(buffer_block.SliceAllDone(), true);
+
+}
+TEST(CoreTest, MessageHeaderGetterTest){
+    char msg[] = {0x01, 0x12, 0x13};
+    ASSERT_EQ(std::get<0>(Message::GetClientHeader(std::span<char>(msg, msg+sizeof(msg)))) == Message::ClientMsgHeader::kBeginTransfer, true);
+    ASSERT_EQ(std::get<0>(Message::GetServerHeader(std::span<char>(msg, msg+sizeof(msg)))) == Message::ServerMsgHeader::kBeginTransferAck_FileMeta, true);
 
 }

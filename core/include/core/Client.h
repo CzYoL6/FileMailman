@@ -10,7 +10,7 @@
 #include<vector>
 
 class Client {
-    enum { max_length = 1024 };
+    enum { max_length = 1024 , thread_pool_count = 8};
 
 public:
     Client(std::string_view ip, uint16_t port, int block_id);

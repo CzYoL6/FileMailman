@@ -63,6 +63,7 @@ public:
 
 public:
     char* data() const {return _data_span.data();}
+    std::span<char> data_span() {return _data_span;}
 private:
     std::span<char> _data_span;
     boost::asio::steady_timer _timeout_timer;

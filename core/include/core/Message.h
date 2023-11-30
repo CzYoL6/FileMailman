@@ -13,7 +13,6 @@ namespace Message {
         kBeginTransfer = 1,
         kBeginBlock,
         kRequireSlice,
-        kEndBlock,
         kEndTransfer
     };
 
@@ -21,7 +20,6 @@ namespace Message {
         kBeginTransferAck_FileMeta = 1,
         kBeginBlockAck,
         kSliceData,
-        kEndBlockAck,
         kEndTransferAck
     };
 

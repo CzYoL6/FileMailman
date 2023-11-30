@@ -5,7 +5,7 @@ def udp_client(host, port):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Send data to the server
-    message = bytes([0x01])
+    message = bytes([0x04])
 
     client_socket.sendto(message, (host, port))
 
@@ -13,12 +13,12 @@ def udp_client(host, port):
     data, server_address = client_socket.recvfrom(1024)
     header = int.from_bytes(data[0:1], byteorder="little")
     print(header)
-    filenamesize = int.from_bytes(data[1:1 + 4], byteorder="little")
-    print(filenamesize)
-    filename = (data[5:5 + filenamesize]).decode("ascii")
-    print(filename)
-    filesize = int.from_bytes(data[5 + filenamesize:], byteorder="little")
-    print(filesize)
+    # filenamesize = int.from_bytes(data[1:1 + 4], byteorder="little")
+    # print(filenamesize)
+    # filename = (data[5:5 + filenamesize]).decode("ascii")
+    # print(filename)
+    # filesize = int.from_bytes(data[5 + filenamesize:], byteorder="little")
+    # print(filesize)
 
     # Close the socket
     client_socket.close()

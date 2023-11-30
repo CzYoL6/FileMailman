@@ -10,7 +10,7 @@ Client::Client(std::string_view ip, uint16_t port, int block_id)
       _server_endpoint(boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string(ip.data()), port))
       {
     do_send();
-    for(int i = 0; i < std::thread::hardware_concurrency(); i++){
+    for(int i = 0; i < thread_pool_count; i++){
         _thread_pool.emplace_back([&]{_io_context.run();});
     }
     for(auto & i : _thread_pool){

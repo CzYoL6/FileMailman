@@ -6,12 +6,22 @@
 #include <core/Server.h>
 #include <spdlog/spdlog.h>
 #include <core/Message.h>
+#include <fstream>
+#include <filesystem>
 
-Server::Server(uint16_t port)
-        : _io_context(), _socket(_io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(),port)),
-          _socket_write_strand(_io_context)
-
+Server::Server(uint16_t port, std::string_view filename)
+        : _io_context(),
+          _socket(_io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(),port)),
+          _socket_write_strand(_io_context),
+          _file_name(filename),
+          _ifs(std::make_unique<std::ifstream >(filename.data())),
+          _close_wait_timer(_io_context)
 {
+
+    _file_size = std::filesystem::file_size(filename);
+    _current_buffer_block = std::make_unique<BufferBlock>(slice_size, block_size, _io_context);
+    _block_count = (_file_size % block_size == 0) ? _file_size / block_size : _file_size / block_size + 1;
+
     do_receive();
     for(int i = 0; i < thread_pool_size; i++){
         _thread_pool.emplace_back([&]{_io_context.run();});
@@ -24,11 +34,11 @@ Server::Server(uint16_t port)
 void Server::do_receive() {
     _socket.async_receive_from(
             boost::asio::buffer(_receive_data, max_length), _client_endpoint,
-            [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+            [this](boost::system::error_code ec, std::size_t bytes_recved) {
                 if (ec) return;
-                spdlog::info("Receive {} bytes of data: .", bytes_recvd);
+                spdlog::info("Receive {} bytes of data: .", bytes_recved);
                 std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(_receive_data[0])<<std::endl;
-                std::string data(_receive_data, _receive_data + bytes_recvd);
+                std::string data(_receive_data, _receive_data + bytes_recved);
                 _io_context.post(_socket_write_strand.wrap([d =std::move(data), this]mutable {
                         auto x = handle_data(std::span<char>(d.begin(), d.end()));
                         queue_send_data(x);
@@ -52,15 +62,8 @@ void Server::do_send() {
 
 }
 
-std::string temp_test;
 
 std::variant<std::span<char>, std::vector<unsigned char>> Server::handle_data(std::span<char> data) {
-
-    // parse data
-    // retrieve file block slice from the file manager.
-
-//    temp_test += "1";
-//    return {temp_test.begin(), temp_test.end()};
 
     auto [clientMsgHeader, load] = Message::GetClientHeader(data );
     switch(clientMsgHeader){
@@ -81,6 +84,8 @@ std::variant<std::span<char>, std::vector<unsigned char>> Server::handle_data(st
             int block_id = *(reinterpret_cast<int*>(load.data()));
             spdlog::info("Client Send Begin Block {}", block_id);
 
+            load_block(block_id);
+
             std::vector<unsigned char> message = {
                     (uint8_t)Message::ServerMsgHeader::kBeginBlockAck
             };
@@ -89,21 +94,16 @@ std::variant<std::span<char>, std::vector<unsigned char>> Server::handle_data(st
         }
         case Message::ClientMsgHeader::kRequireSlice: {
             assert(load.size() == sizeof(int));
+
             int slice_id = *(reinterpret_cast<int *>(load.data()));
+            assert(slice_id < _current_buffer_block->slice_count());
+
             spdlog::info("Client Send Require Slice {}", slice_id);
 
-            //TODO
-            break;
-        }
-        case Message::ClientMsgHeader::kEndBlock: {
-            assert(load.size() == sizeof(int));
-            int block_id = *(reinterpret_cast<int*>(load.data()));
-            spdlog::info("Client Send End Block {}", block_id);
+            std::span<char> slice_data = _current_buffer_block->GetBlockSlice(slice_id)->data_span() ;
 
-            std::vector<unsigned char> message = {
-                    (uint8_t)Message::ServerMsgHeader::kEndBlockAck
-            };
-            return std::move(message);
+            return slice_data;
+
             break;
         }
         case Message::ClientMsgHeader::kEndTransfer: {
@@ -113,7 +113,25 @@ std::variant<std::span<char>, std::vector<unsigned char>> Server::handle_data(st
             std::vector<unsigned char> message = {
                     (uint8_t)Message::ServerMsgHeader::kEndTransferAck
             };
+
+            _close_wait_timer.cancel();
+            _close_wait_timer.expires_after(std::chrono::seconds (5));
+            _close_wait_timer.async_wait([&](const  boost::system::error_code& ec){
+                if(ec == boost::asio::error::operation_aborted){
+                    spdlog::warn("Receive redundant end transfer message, restart timer.");
+                }
+                else if(ec){
+                    spdlog::error("Close wait timer error.");
+                    exit(-1);
+                }
+                else{
+                    spdlog::warn("Ready to end program.");
+                    _io_context.stop();
+                }
+            });
+
             return std::move(message);
+
             break;
         }
         default: {
@@ -127,7 +145,7 @@ std::variant<std::span<char>, std::vector<unsigned char>> Server::handle_data(st
 
 void Server::queue_send_data(const std::variant<std::span<char>, std::vector<unsigned char>> &data) {
     bool in_progress = !_send_data_deque.empty();
-    _send_data_deque.push_back(std::move(data));
+    _send_data_deque.push_back(data);
 
     if(!in_progress){
         do_send();
@@ -141,11 +159,30 @@ void Server::send_data_done(const boost::system::error_code &error) {
     }
 }
 
+void Server::load_block(int id) {
+    if(_current_buffer_block_id != id){
+        _current_buffer_block->ReadFromFile(*_ifs, id * block_size,
+                                            std::min((uint64_t)block_size, _file_size - id * block_size));
+    }
+}
+
+Server::~Server() {
+    for(auto &i : _thread_pool){
+        if(i.joinable()) i.join();
+    }
+    if(_ifs->is_open()){
+        _ifs->close();
+    }
+    if(_socket.is_open()){
+        _socket.close();
+    }
+}
+
 int main(int argc, char** argv){
     try
     {
 
-        Server s(std::atoi(argv[1]));
+        Server s(std::atoi(argv[1]), "test.png");
 
     }
     catch (std::exception& e)

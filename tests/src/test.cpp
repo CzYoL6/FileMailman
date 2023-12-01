@@ -40,7 +40,7 @@ TEST(CoreTest, BufferBlockTest){
 }
 TEST(CoreTest, MessageHeaderGetterTest){
     char msg[] = {0x01, 0x12, 0x13};
-    ASSERT_EQ(std::get<0>(Message::GetClientHeader(std::span<char>(msg, msg+sizeof(msg)))) == Message::ClientMsgHeader::kBeginTransfer, true);
-    ASSERT_EQ(std::get<0>(Message::GetServerHeader(std::span<char>(msg, msg+sizeof(msg)))) == Message::ServerMsgHeader::kBeginTransferAck_FileMeta, true);
+    ASSERT_EQ(std::get<0>(Message::GetReceiverHeader(std::span<char>(msg, msg + sizeof(msg)))) == Message::ReceiverMsgHeader::kBeginTransfer, true);
+    ASSERT_EQ(std::get<0>(Message::GetSenderHeader(std::span<char>(msg, msg + sizeof(msg)))) == Message::SenderMsgHeader::kBeginTransferAck_FileMeta, true);
 
 }

@@ -31,7 +31,7 @@ else()
     message("Unsupported operating system: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-project(ImguiOpenGL LANGUAGES C CXX)
+project(FileMailman LANGUAGES C CXX)
 
 add_subdirectory(vendor)
 add_subdirectory(gui)

@@ -51,7 +51,8 @@ private:
 
 class BlockSlice{
 public:
-    BlockSlice(int slice_id, char *begin, int bytes_size, boost::asio::io_context &io_context);
+    BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size,
+               boost::asio::io_context &io_context);
 
     ~BlockSlice();
 
@@ -69,6 +70,7 @@ public:
     std::span<char> data_span() {return _data_span;}
     int slice_id() const { return _slice_id;}
     void set_slice_id(int v) { _slice_id = v;}
+    BufferBlock& buffer_block(){return _buffer_block;};
 
 private:
     std::span<char> _data_span;
@@ -77,6 +79,7 @@ private:
     enum{max_retry_times = 5};
     boost::asio::io_context& _io_context;
     int _slice_id;
+    BufferBlock& _buffer_block;
 };
 
 #endif //IMGUIOPENGL_BUFFERBLOCK_H

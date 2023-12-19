@@ -9,8 +9,9 @@
 
 
 
-BlockSlice::BlockSlice(int slice_id, char *begin, int bytes_size, boost::asio::io_context &io_context)
-    : _slice_id(slice_id), _io_context(io_context), _timeout_timer(io_context), _data_span(begin, bytes_size){
+BlockSlice::BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size,
+                       boost::asio::io_context &io_context)
+    : _buffer_block(buffer_block), _slice_id(slice_id), _io_context(io_context), _timeout_timer(io_context), _data_span(begin, bytes_size){
 }
 
 void BlockSlice::ReadOut(char *begin, int count) {
@@ -27,7 +28,7 @@ BlockSlice::~BlockSlice() {
 
 }
 
-void BlockSlice::StartTimeoutTimer(int msec, std::function<void(const boost::system::error_code &)> function) {
+void BlockSlice::start_timeout_timer(int msec, std::function<void(const boost::system::error_code &)> function) {
     _timeout_timer.expires_after(std::chrono::milliseconds (msec));
     _timeout_timer.async_wait(std::move(function));
 }
@@ -53,7 +54,8 @@ void BufferBlock::WriteToFile(std::ofstream &ofs, int begin_bytes, int count) {
 
 void BufferBlock::SplitIntoSlices() {
     for(int i = 0; i < _bytes_size; i += _slice_size){
-        _slices.emplace_back(std::make_shared<BlockSlice>(_slice_count,
+        _slices.emplace_back(std::make_shared<BlockSlice>(*this,
+                                                          _slice_count,
                                                           _data + i,
                                                           std::min(_slice_size, (int)(_bytes_size - _slice_count * _slice_size)),
 //                                                          _slice_size,

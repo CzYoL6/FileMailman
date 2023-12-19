@@ -9,9 +9,8 @@
 
 
 
-BlockSlice::BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size,
-                       boost::asio::io_context &io_context)
-    : _buffer_block(buffer_block), _slice_id(slice_id), _io_context(io_context), _timeout_timer(io_context), _data_span(begin, bytes_size){
+BlockSlice::BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size)
+    : _buffer_block(buffer_block), _slice_id(slice_id),  _data_span(begin, bytes_size){
 }
 
 void BlockSlice::ReadOut(char *begin, int count) {
@@ -28,10 +27,6 @@ BlockSlice::~BlockSlice() {
 
 }
 
-void BlockSlice::start_timeout_timer(int msec, std::function<void(const boost::system::error_code &)> function) {
-    _timeout_timer.expires_after(std::chrono::milliseconds (msec));
-    _timeout_timer.async_wait(std::move(function));
-}
 
 
 BufferBlock::~BufferBlock() {
@@ -57,20 +52,17 @@ void BufferBlock::SplitIntoSlices() {
         _slices.emplace_back(std::make_shared<BlockSlice>(*this,
                                                           _slice_count,
                                                           _data + i,
-                                                          std::min(_slice_size, (int)(_bytes_size - _slice_count * _slice_size)),
-//                                                          _slice_size,
-                                                          _io_context));
+                                                          std::min(_slice_size, (int)(_bytes_size - _slice_count * _slice_size))));
         _slice_count++;
     }
 
 }
 
-BufferBlock::BufferBlock(int block_id, int slice_bytes_size, int bytes_size, boost::asio::io_context &io_context)
+BufferBlock::BufferBlock(int block_id, int slice_bytes_size, int bytes_size)
         : _block_id(block_id),
           _slice_size(slice_bytes_size),
           _slice_count(0),
-          _bytes_size(bytes_size),
-          _io_context(io_context){
+          _bytes_size(bytes_size){
     _data = new char[bytes_size];
     memset(_data, 0, sizeof(_data));
     SplitIntoSlices();

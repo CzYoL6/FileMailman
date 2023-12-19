@@ -16,7 +16,7 @@ Sender::Sender(boost::asio::io_context &io_context, uint16_t port, std::string_v
           _close_wait_timer(io_context),
           _transferring(false),
           _file_size(std::filesystem::file_size(filename)),
-          _current_buffer_block(std::make_unique<BufferBlock>(0, 0, 0, io_context)),
+          _current_buffer_block(std::make_unique<BufferBlock>(0, 0, 0)),
           _block_count((_file_size % block_size == 0) ? _file_size / block_size : _file_size / block_size + 1)
 
 {
@@ -60,7 +60,7 @@ void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char
             }
             _current_buffer_block_id = block_id;
             int real_block_size = std::min((int)block_size, (int)(_file_size - _current_buffer_block_id * block_size));
-            _current_buffer_block = std::make_unique<BufferBlock>(_current_buffer_block_id, slice_size, real_block_size, _io_context);
+            _current_buffer_block = std::make_unique<BufferBlock>(_current_buffer_block_id, slice_size, real_block_size);
             load_block(block_id);
 
             send_begin_block_ack(block_id);

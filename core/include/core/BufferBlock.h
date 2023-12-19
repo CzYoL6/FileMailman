@@ -11,13 +11,12 @@
 #include <assert.h>
 #include <span>
 #include <vector>
-#include <boost/asio.hpp>
 
 class BlockSlice;
 
 class BufferBlock {
 public:
-    BufferBlock(int block_id, int slice_bytes_size, int bytes_size, boost::asio::io_context &io_context);
+    BufferBlock(int block_id, int slice_bytes_size, int bytes_size);
     ~BufferBlock();
 
 public:
@@ -45,25 +44,19 @@ private:
     char* _data;
     int _bytes_size;
     int _bitmap{0};
-    boost::asio::io_context& _io_context;
     int _block_id;
 };
 
 class BlockSlice{
 public:
-    BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size,
-               boost::asio::io_context &io_context);
+    BlockSlice(BufferBlock &buffer_block, int slice_id, char *begin, int bytes_size);
 
     ~BlockSlice();
 
 public:
     void ReadOut(char *begin, int count);
     void WriteIn(char* begin, int count);
-    void StartTimeoutTimer(int msec, std::function<void(const boost::system::error_code&)> function);
 
-public:
-    int retry_times() const{return _retry_times;}
-    void set_retry_times(int v) { _retry_times = v;}
 
 public:
     char* data() const {return _data_span.data();}
@@ -74,10 +67,6 @@ public:
 
 private:
     std::span<char> _data_span;
-    boost::asio::steady_timer _timeout_timer;
-    int _retry_times{0};
-    enum{max_retry_times = 5};
-    boost::asio::io_context& _io_context;
     int _slice_id;
     BufferBlock& _buffer_block;
 };

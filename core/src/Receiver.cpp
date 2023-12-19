@@ -13,7 +13,7 @@ Receiver::Receiver(boost::asio::io_context &io_context, std::string_view ip, uin
     _sender_endpoint(),
     _file_size(0),
     _block_count(0),
-    _current_buffer_block(std::make_unique<BufferBlock>(0, 0 , 0, _io_context))
+    _current_buffer_block(std::make_unique<BufferBlock>(0, 0 , 0))
 {
     spdlog::warn("client launched. ");
 
@@ -55,7 +55,7 @@ void Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<ch
             // start to ask for the first block (id 0)
             _current_block_id = 0;
             int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
-            _current_buffer_block = std::make_unique<BufferBlock>(_current_block_id, slice_size, real_block_size, _io_context);
+            _current_buffer_block = std::make_unique<BufferBlock>(_current_block_id, slice_size, real_block_size);
             send_begin_block(0);
             break;
         }

@@ -23,15 +23,13 @@ Receiver::Receiver(std::string_view ip, uint16_t port)
     _socket.connect(_sender_endpoint);
 
     // send begin transfer message
-    _io_context.post(_socket_write_strand.wrap([this](){
-        spdlog::info("Send Begin Transfer message.");
-        std::vector<unsigned char> message = {
-                (uint8_t) Message::ReceiverMsgHeader::kBeginTransfer
-        };
-        queue_send_data(
-                _sender_endpoint,
-                        message);
-    }));
+    spdlog::info("Send Begin Transfer message.");
+    std::vector<unsigned char> message = {
+            (uint8_t) Message::ReceiverMsgHeader::kBeginTransfer
+    };
+    queue_send_data(
+            _sender_endpoint,
+                    message);
 }
 
 Receiver::~Receiver() {

@@ -5,9 +5,13 @@
 #include <core/Sender.h>
 #include <core/Receiver.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/async.h>
+
 
 int main(int argc, char** argv){
-    spdlog::warn("launching...");
+    spdlog::warn("Launching...");
+
     try
     {
         if(strcmp(argv[1] ,"send") == 0) {
@@ -28,6 +32,9 @@ int main(int argc, char** argv){
     {
         std::cerr << "Exception: " << e.what() << "\n";
     }
+
+    // flush and stop the logger (ensure all messages are processed)
+    spdlog::shutdown();
 
     return 0;
 }

@@ -90,13 +90,16 @@ void UdpClient::do_send() {
 }
 
 void UdpClient::queue_send_data(const boost::asio::ip::udp::endpoint& otherend, std::vector<unsigned char> &data) {
-    if(!_running) return;
-    bool in_progress = !_send_data_deque.empty();
-    _send_data_deque.emplace_back(otherend,std::move(data));
+    _io_context.post(_socket_write_strand.wrap([this, otherend, data](){
+        if(!_running) return;
+        bool in_progress = !_send_data_deque.empty();
+        _send_data_deque.emplace_back(otherend,data);
 
-    if(!in_progress){
-        do_send();
-    }
+        if(!in_progress){
+            do_send();
+        }
+    }));
+
 }
 
 void UdpClient::send_data_done(const boost::system::error_code &error) {

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <core/BufferBlock.h>
 #include <core/Message.h>
+#include <core/Event.hpp>
 
 //class TestCore : public ::testing::Test{
 //public:
@@ -73,5 +74,40 @@ TEST(CoreTest, VectorCastTest){
 TEST(CoreTest, BufferBlockReadWriteTest){
     auto t = boost::asio::io_context{};
     BufferBlock bufferBlock(1, 8, t);
+
+}
+
+TEST(CoreTest, EventTestNoArgument){
+    Event add_event;
+    int a = 1;
+    int b = 2;
+    std::function<void()> e1,e2;
+    e1=[&](){
+        a++;
+    };
+    e2=[&](){
+        b++;
+    };
+    add_event.Subscribe(e1);
+    add_event.Subscribe(e2);
+
+    add_event.Trigger();
+    ASSERT_EQ(a, 2);
+    ASSERT_EQ(b, 3);
+
+}
+TEST(CoreTest, EventTestWithArgument){
+    Event<int,int, int&> add_event;
+    int a = 1;
+    int b = 2;
+    int c;
+    std::function<void(int,int, int&)> e1;
+    e1=[&](int m, int n,int &r){
+        r = m + n;
+    };
+    add_event.Subscribe(e1);
+
+    add_event.Trigger(a, b, c);
+    ASSERT_EQ(c, 3);
 
 }

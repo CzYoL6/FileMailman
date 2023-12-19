@@ -9,33 +9,22 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Set build type to DEBUG by default if not specified
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "DEBUG" CACHE STRING "Choose the type of build (DEBUG, RELEASE)" FORCE)
+    set(CMAKE_BUILD_TYPE "DEBUG" CACHE STRING "Choose the type of build (DEBUG, RELEASE, DIST)" FORCE)
 endif()
 
 # Define macros for different build configurations
-if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DWL_DEBUG)
-elseif(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_definitions(-DWL_RELEASE)
-elseif(CMAKE_BUILD_TYPE STREQUAL "DIST")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Dist")
     add_definitions(-DWL_DIST)
 endif()
 
-# Define macros for different operating system
-# if CMAKE_SYSTEM_NAME is empty, add -DCMAKE_SYSTEM_NAME=Windows in cmake command line.
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    message("Configuring for Windows")
-    add_definitions(-DWL_PLATFORM_WINDOWS)
-    # Add Linux-specific configurations
-else()
-    message("Unsupported operating system: ${CMAKE_SYSTEM_NAME}")
-endif()
 
 project(FileMailman LANGUAGES C CXX)
 
 add_subdirectory(vendor)
-add_subdirectory(gui)
-add_subdirectory(app)
 add_subdirectory(core)
 
 enable_testing()

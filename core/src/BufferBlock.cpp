@@ -3,12 +3,14 @@
 //
 
 #include<fstream>
+#include <iostream>
 #include <core/BufferBlock.h>
+#include <core/Utils.hpp>
 
 
 
 BlockSlice::BlockSlice(char *begin, int bytes_size, boost::asio::io_context &io_context)
-    : _io_context(io_context), _timeout_timer(io_context){
+    : _io_context(io_context), _timeout_timer(io_context), _data_span(begin, bytes_size){
 }
 
 void BlockSlice::ReadOut(char *begin, int count) {
@@ -39,18 +41,21 @@ void BufferBlock::ReadFromFile(std::ifstream &ifs, int begin_bytes, int count) {
     assert(ifs.is_open());
     ifs.seekg(begin_bytes, std::ios::beg);
     ifs.read(_data, count);
+
 }
 
 void BufferBlock::WriteToFile(std::ofstream &ofs, int begin_bytes, int count) {
     assert(ofs.is_open());
     ofs.seekp(begin_bytes, std::ios::beg);
     ofs.write(_data,count);
+
 }
 
 void BufferBlock::SplitIntoSlices() {
     for(int i = 0; i < _bytes_size; i += _slice_size){
         _slices.emplace_back(std::make_shared<BlockSlice>(_data + i,
                                                           std::min(_slice_size, (int)(_bytes_size - _slice_count * _slice_size)),
+//                                                          _slice_size,
                                                           _io_context));
         _slice_count++;
     }
@@ -63,6 +68,7 @@ BufferBlock::BufferBlock(int slice_bytes_size, int bytes_size, boost::asio::io_c
           _bytes_size(bytes_size),
           _io_context(io_context){
     _data = new char[bytes_size];
+    memset(_data, 0, sizeof(_data));
     SplitIntoSlices();
 }
 

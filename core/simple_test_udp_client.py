@@ -5,7 +5,7 @@ def udp_client(host, port):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Send data to the server
-    message = bytes([0x04])
+    message = bytes([0x00])
 
     client_socket.sendto(message, (host, port))
 

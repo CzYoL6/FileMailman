@@ -37,7 +37,7 @@ public:
     int slice_count() const {return _slice_count;}
 
 private:
-    int _slice_count;
+    int _slice_count{0};
     int _slice_size;
     std::vector<std::shared_ptr<BlockSlice>> _slices;
     char* _data;

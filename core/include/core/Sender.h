@@ -11,10 +11,10 @@ class Sender : public UdpClient{
 
 public:
     Sender(uint16_t port, std::string_view filename);
-    ~Sender();
+    ~Sender() override;
 
 protected:
-    virtual std::variant<std::span<char>, std::vector<unsigned char>> handle_data(std::span<char> data) override;
+    void handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
 
 private:
 
@@ -25,9 +25,14 @@ private:
     uint64_t _block_count;
     std::string _file_name;
     std::unique_ptr<BufferBlock> _current_buffer_block;
-    int _current_buffer_block_id{std::string_view(), -1};
+    int _current_buffer_block_id{ -1};
 
     boost::asio::steady_timer _close_wait_timer;
+
+    bool _transferring;
+
+
+    boost::asio::ip::udp::endpoint _receiver_endpoint;
 };
 
 

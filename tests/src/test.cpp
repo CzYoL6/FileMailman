@@ -26,7 +26,7 @@
 //
 TEST(CoreTest, BufferBlockTest){
     boost::asio::io_context temp;
-    BufferBlock buffer_block(1024, 10248, temp);
+    BufferBlock buffer_block(1024, 10240, temp);
 
     ASSERT_EQ(buffer_block.IsSliceDone(1), false);
     buffer_block.SetSliceDone(1);
@@ -42,5 +42,36 @@ TEST(CoreTest, MessageHeaderGetterTest){
     char msg[] = {0x01, 0x12, 0x13};
     ASSERT_EQ(std::get<0>(Message::GetReceiverHeader(std::span<char>(msg, msg + sizeof(msg)))) == Message::ReceiverMsgHeader::kBeginTransfer, true);
     ASSERT_EQ(std::get<0>(Message::GetSenderHeader(std::span<char>(msg, msg + sizeof(msg)))) == Message::SenderMsgHeader::kBeginTransferAck_FileMeta, true);
+
+}
+
+TEST(CoreTest, VectorCastTest){
+    std::vector<unsigned char> m = {};
+    auto& m_ = reinterpret_cast<std::vector<int>&>(m);
+    m_.push_back(2);
+
+    ASSERT_EQ(m.size(), 4);
+    ASSERT_EQ(m[0], (uint8_t)0x02);
+    ASSERT_EQ(m[1], (uint8_t)0x00);
+    ASSERT_EQ(m[2], (uint8_t)0x00);
+    ASSERT_EQ(m[3], (uint8_t)0x00);
+
+    m.clear();
+    m.push_back(0x01);
+    std::vector<int> n = {2};
+    auto& n_ = reinterpret_cast<std::vector<unsigned char>&>(n);
+    m.insert(m.end(), n_.begin(), n_.end());
+    ASSERT_EQ(m.size(), 5);
+    ASSERT_EQ(m[0], (uint8_t)0x01);
+    ASSERT_EQ(m[1], (uint8_t)0x02);
+    ASSERT_EQ(m[2], (uint8_t)0x00);
+    ASSERT_EQ(m[3], (uint8_t)0x00);
+    ASSERT_EQ(m[4], (uint8_t)0x00);
+
+}
+
+TEST(CoreTest, BufferBlockReadWriteTest){
+    auto t = boost::asio::io_context{};
+    BufferBlock bufferBlock(1, 8, t);
 
 }

@@ -16,9 +16,9 @@ class UdpClient : public std::enable_shared_from_this<UdpClient> {
 
 public:
     enum { max_length = 2048, thread_pool_size = 8, block_size = 1024 * 8, slice_size = 1024};
-    explicit UdpClient(std::string_view ip, uint16_t port);
-    explicit UdpClient(uint16_t port);
-    explicit UdpClient();
+    explicit UdpClient(boost::asio::io_context& io_context, std::string_view ip, uint16_t port);
+    explicit UdpClient(boost::asio::io_context& io_context, uint16_t port);
+    explicit UdpClient(boost::asio::io_context& io_context);
     virtual ~UdpClient();
     void Start();
 
@@ -31,7 +31,7 @@ protected:
     void send_data_done(const boost::system::error_code& error);
 
 protected:
-    boost::asio::io_context _io_context;
+    boost::asio::io_context& _io_context;
     boost::asio::ip::udp::socket _socket;
     boost::asio::io_context::strand _socket_write_strand;
     char _receive_data[max_length]{};

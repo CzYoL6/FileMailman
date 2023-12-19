@@ -15,7 +15,7 @@
 class Receiver : public UdpClient{
 
 public:
-    Receiver(std::string_view ip, uint16_t port);
+    Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port);
     ~Receiver() override;
 
 protected:
@@ -23,6 +23,11 @@ protected:
 
 private:
     void save_block(int id);
+
+    void send_begin_transfer();
+    void send_begin_block(int block_id);
+    void send_require_slice(int block_id, int slice_id);
+    void send_end_transfer();
 
 private:
     std::shared_ptr<std::ofstream> _ofs;

@@ -11,15 +11,15 @@
 
 int main(int argc, char** argv){
     spdlog::warn("Launching...");
-
+    boost::asio::io_context ioContext;
     try
     {
         if(strcmp(argv[1] ,"send") == 0) {
-            std::shared_ptr<UdpClient> s = std::make_shared<Sender>(std::atoi(argv[2]), argv[3]);
+            std::shared_ptr<UdpClient> s = std::make_shared<Sender>(ioContext, std::atoi(argv[2]), argv[3]);
             s->Start();
         }
         else if(strcmp(argv[1], "receive") == 0){
-            std::shared_ptr<UdpClient> r = std::make_shared<Receiver>(argv[2], std::atoi(argv[3]));
+            std::shared_ptr<UdpClient> r = std::make_shared<Receiver>(ioContext, argv[2], std::atoi(argv[3]));
             r->Start();
         }
         else{
@@ -32,9 +32,6 @@ int main(int argc, char** argv){
     {
         std::cerr << "Exception: " << e.what() << "\n";
     }
-
-    // flush and stop the logger (ensure all messages are processed)
-    spdlog::shutdown();
 
     return 0;
 }

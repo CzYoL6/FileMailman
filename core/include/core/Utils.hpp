@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <spdlog/spdlog.h>
 
 inline void printHexBytes(const char* data, std::size_t size) {
 #ifdef WL_DEBUG

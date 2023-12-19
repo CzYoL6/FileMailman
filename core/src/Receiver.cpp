@@ -8,8 +8,8 @@
 #include <iostream>
 #include <fstream>
 
-Receiver::Receiver(std::string_view ip, uint16_t port)
-    : UdpClient(),
+Receiver::Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port)
+    : UdpClient(io_context),
     _sender_endpoint(),
     _file_size(0),
     _block_count(0),
@@ -23,13 +23,7 @@ Receiver::Receiver(std::string_view ip, uint16_t port)
     _socket.connect(_sender_endpoint);
 
     // send begin transfer message
-    spdlog::info("Send Begin Transfer message.");
-    std::vector<unsigned char> message = {
-            (uint8_t) Message::ReceiverMsgHeader::kBeginTransfer
-    };
-    queue_send_data(
-            _sender_endpoint,
-                    message);
+    send_begin_transfer();
 }
 
 Receiver::~Receiver() {
@@ -62,12 +56,7 @@ void Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<ch
             _current_block_id = 0;
             int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
             _current_buffer_block = std::make_unique<BufferBlock>(slice_size, real_block_size, _io_context);
-            spdlog::info(" Send Begin Block message, block id:{}", 0);
-            std::vector<unsigned char> message = {
-                    (uint8_t) Message::ReceiverMsgHeader::kBeginBlock,
-                    0x00, 0x00, 0x00, 0x00
-            };
-            queue_send_data(_sender_endpoint, message);
+            send_begin_block(0);
             break;
         }
         case Message::SenderMsgHeader::kBeginBlockAck:{
@@ -80,15 +69,7 @@ void Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<ch
 
             _current_block_slice_id = 0;
             // start to ask for the first slice in the block
-            spdlog::info(" Send Require Slice message, block id:{}, slice id:{}", block_id, 0);
-            std::vector<unsigned char> message = {
-                    (uint8_t)Message::ReceiverMsgHeader::kRequireSlice,
-            };
-            std::vector<int> ids = {block_id, 0};
-            auto& ids_ = reinterpret_cast<std::vector<unsigned char>&>(ids);
-            message.insert(message.end(), ids_.begin(), ids_.end());
-
-            queue_send_data(_sender_endpoint, message);
+            send_require_slice(_current_block_id, 0);
             break;
         }
         case Message::SenderMsgHeader::kSliceData: {
@@ -128,39 +109,17 @@ void Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<ch
                 // require next block
                 _current_block_id++;
                 if(_current_block_id == _block_count){
-                    spdlog::warn("Transmission of the file is finished, send end transfer message.");
-                    //End transfer
-                    std::vector<unsigned char> message = {
-                            (uint8_t ) Message::ReceiverMsgHeader::kEndTransfer
-                    };
-
-                    queue_send_data(_sender_endpoint, message);
+                    send_end_transfer();
                     break;
                 }
 
 
-                spdlog::info(" Send Begin Block message, block id:{}", _current_block_id);
-                int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
-                _current_buffer_block = std::make_unique<BufferBlock>(slice_size, real_block_size, _io_context);
-                std::vector<unsigned char> message = {
-                        (uint8_t ) Message::ReceiverMsgHeader::kBeginBlock
-                };
-                std::vector<int> id = {_current_block_id};
-                auto& id_ = reinterpret_cast<std::vector<unsigned char>&>(id);
-                message.insert(message.end(), id_.begin(), id_.end());
-                queue_send_data(_sender_endpoint, message);
+                send_begin_block(_current_block_id);
                 break;
             }
 
 
-            spdlog::info(" Send Require Slice message, block id:{}, slice id:{}", _current_block_id, _current_block_slice_id);
-            std::vector<unsigned char> message = {
-                    (uint8_t) Message::ReceiverMsgHeader::kRequireSlice
-            };
-            std::vector<int> ids = {_current_block_id, _current_block_slice_id};
-            auto& ids_ = reinterpret_cast<std::vector<unsigned char>&>(ids);
-            message.insert(message.end(), ids_.begin(), ids_.end());
-            queue_send_data(_sender_endpoint, message);
+            send_require_slice(_current_block_id, _current_block_slice_id);
 
             break;
 
@@ -185,5 +144,47 @@ void Receiver::save_block(int id) {
     int bytes_size = std::min((uint64_t)block_size, _file_size - id * block_size);
     _current_buffer_block->WriteToFile(*_ofs, id * block_size, bytes_size);
     spdlog::info("Save {} bytes' data of block {} (max {}) ", bytes_size, id, _block_count - 1);
+}
+
+void Receiver::send_begin_transfer() {
+    spdlog::info("Send Begin Transfer message.");
+    std::vector<unsigned char> message = {
+            (uint8_t) Message::ReceiverMsgHeader::kBeginTransfer
+    };
+    queue_send_data(
+            _sender_endpoint,
+            message);
+}
+
+void Receiver::send_begin_block(int block_id) {
+    spdlog::info(" Send Begin Block message, block id:{}", block_id);
+    std::vector<unsigned char> message = {
+            (uint8_t) Message::ReceiverMsgHeader::kBeginBlock,
+    };
+    std::vector<int> id = {block_id};
+    auto &id_ = reinterpret_cast<std::vector<unsigned char>&>(id);
+    message.insert(message.end(), id_.begin(), id_.end());
+    queue_send_data(_sender_endpoint, message);
+}
+
+void Receiver::send_require_slice(int block_id, int slice_id) {
+    spdlog::info(" Send Require Slice message, block id:{}, slice id:{}", block_id, slice_id);
+    std::vector<unsigned char> message = {
+            (uint8_t) Message::ReceiverMsgHeader::kRequireSlice
+    };
+    std::vector<int> ids = {block_id, slice_id};
+    auto& ids_ = reinterpret_cast<std::vector<unsigned char>&>(ids);
+    message.insert(message.end(), ids_.begin(), ids_.end());
+    queue_send_data(_sender_endpoint, message);
+}
+
+void Receiver::send_end_transfer() {
+    //End transfer
+    spdlog::warn("Transmission of the file is finished, send end transfer message.");
+    std::vector<unsigned char> message = {
+            (uint8_t ) Message::ReceiverMsgHeader::kEndTransfer
+    };
+
+    queue_send_data(_sender_endpoint, message);
 }
 

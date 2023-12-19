@@ -7,14 +7,23 @@
 
 #include <core/UdpClient.h>
 
+#include <utility>
+
 class Sender : public UdpClient{
 
 public:
-    Sender(uint16_t port, std::string_view filename);
+    Sender(boost::asio::io_context &io_context, uint16_t port, std::string_view filename);
     ~Sender() override;
 
 protected:
     void handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
+    void send_begin_transfer_ack(const std::string &file_name, int file_size);
+    void send_begin_block_ack(int block_id);
+    void send_slice_data(int block_id, int slice_id, std::span<char> slice_data);
+    void send_end_transfer_ack();
+
+//public:
+//    void set_current_buffer_block(std::shared_ptr<BufferBlock> buffer_block) { _current_buffer_block = std::move(buffer_block); }
 
 private:
 

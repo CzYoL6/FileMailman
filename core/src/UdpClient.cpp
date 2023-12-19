@@ -11,16 +11,16 @@
 #include <filesystem>
 #include <core/Utils.hpp>
 
-UdpClient::UdpClient(std::string_view ip, uint16_t port)
-    : _io_context(),_socket_write_strand(_io_context),
+UdpClient::UdpClient(boost::asio::io_context& io_context, std::string_view ip, uint16_t port)
+    : _io_context(io_context),_socket_write_strand(_io_context),
       _socket(_io_context,
               boost::asio::ip::udp::endpoint(
                       boost::asio::ip::address::from_string(ip.data()),
                       port))
 {
 }
-UdpClient::UdpClient(uint16_t port)
-    : _io_context(),_socket_write_strand(_io_context),
+UdpClient::UdpClient(boost::asio::io_context& io_context, uint16_t port)
+    : _io_context(io_context),_socket_write_strand(_io_context),
       _socket(_io_context,
               boost::asio::ip::udp::endpoint (
                       boost::asio::ip::udp::v4(),
@@ -31,8 +31,8 @@ UdpClient::UdpClient(uint16_t port)
 
 }
 
-UdpClient::UdpClient()
-    :_io_context(),_socket_write_strand(_io_context),
+UdpClient::UdpClient(boost::asio::io_context& io_context)
+    :_io_context(io_context),_socket_write_strand(_io_context),
      _socket(_io_context,boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4::any(), 0))
 {
 }
@@ -57,7 +57,6 @@ void UdpClient::do_receive() {
 
 
                 std::string data (_receive_data, bytes_recved);
-                spdlog::info("Data bytes in hex: ");
                 printHexBytes(_receive_data, bytes_recved);
 
                 _io_context.post([data, &other_end, this]()mutable {

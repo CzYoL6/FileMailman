@@ -27,7 +27,7 @@
 //
 TEST(CoreTest, BufferBlockTest){
     boost::asio::io_context temp;
-    BufferBlock buffer_block(1024, 10240, temp);
+    BufferBlock buffer_block(0, 1024, 10240, temp);
 
     ASSERT_EQ(buffer_block.IsSliceDone(1), false);
     buffer_block.SetSliceDone(1);
@@ -73,7 +73,7 @@ TEST(CoreTest, VectorCastTest){
 
 TEST(CoreTest, BufferBlockReadWriteTest){
     auto t = boost::asio::io_context{};
-    BufferBlock bufferBlock(1, 8, t);
+    BufferBlock bufferBlock(0, 1, 8, t);
 
 }
 

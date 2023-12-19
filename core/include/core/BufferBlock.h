@@ -17,7 +17,7 @@ class BlockSlice;
 
 class BufferBlock {
 public:
-    BufferBlock(int slice_bytes_size, int bytes_size, boost::asio::io_context &io_context);
+    BufferBlock(int block_id, int slice_bytes_size, int bytes_size, boost::asio::io_context &io_context);
     ~BufferBlock();
 
 public:
@@ -35,6 +35,8 @@ public:
     int size() const{return _bytes_size;}
     auto GetBlockSlice(int id){return _slices[id];}
     int slice_count() const {return _slice_count;}
+    int block_id() const {return _block_id;}
+    void set_block_id(int v) { _block_id = v;}
 
 private:
     int _slice_count{0};
@@ -44,11 +46,12 @@ private:
     int _bytes_size;
     int _bitmap{0};
     boost::asio::io_context& _io_context;
+    int _block_id;
 };
 
 class BlockSlice{
 public:
-    BlockSlice(char *begin, int bytes_size, boost::asio::io_context &io_context);
+    BlockSlice(int slice_id, char *begin, int bytes_size, boost::asio::io_context &io_context);
 
     ~BlockSlice();
 
@@ -64,12 +67,16 @@ public:
 public:
     char* data() const {return _data_span.data();}
     std::span<char> data_span() {return _data_span;}
+    int slice_id() const { return _slice_id;}
+    void set_slice_id(int v) { _slice_id = v;}
+
 private:
     std::span<char> _data_span;
     boost::asio::steady_timer _timeout_timer;
     int _retry_times{0};
     enum{max_retry_times = 5};
     boost::asio::io_context& _io_context;
+    int _slice_id;
 };
 
 #endif //IMGUIOPENGL_BUFFERBLOCK_H

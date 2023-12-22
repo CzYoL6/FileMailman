@@ -11,7 +11,10 @@
 #ifndef IMGUIOPENGL_UDPCLIENT_H
 #define IMGUIOPENGL_UDPCLIENT_H
 
-
+enum MessageType: uint8_t {
+    kReliable = 0,
+    kUnreliable
+};
 class UdpClient : public std::enable_shared_from_this<UdpClient> {
 
 public:
@@ -24,11 +27,37 @@ public:
 
 protected:
     void wait_for_all_tasks();
-    void queue_send_data(const boost::asio::ip::udp::endpoint& otherend, std::vector<unsigned char> &data);
+    void queue_send_data(const boost::asio::ip::udp::endpoint &otherend, std::vector<unsigned char> data,
+                         MessageType message_type, uint64_t message_id_to_ack);
     void do_receive();
     void do_send();
-    virtual void handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) =0;
-    void send_data_done(const boost::system::error_code& error);
+    virtual std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) =0;
+    void send_data_done();
+    void clear_acking_list();
+
+private:
+    boost::asio::steady_timer &get_timer(uint64_t message_id);
+    std::vector<unsigned char>& get_data(uint64_t message_id);
+    boost::asio::ip::udp::endpoint &get_endpoint(uint64_t message_id);
+
+
+    static void parse_message_id(std::span<char> data, uint64_t *ack_message_id, uint64_t *new_message_id);
+
+    void launch_retry_timer(uint64_t message_id, std::vector<unsigned char> data,
+                            const boost::asio::ip::udp::endpoint &endpoint,
+                            const std::function<void(uint64_t)> &cancel_cb_,
+                            const std::function<void(uint64_t)> &error_cb_,
+                            const std::function<void(uint64_t)> &timeout_cb_);
+    void cancel_retry_timer(uint64_t message_id);
+    static void timer_callback(const boost::system::error_code &ec, boost::asio::steady_timer &timer, uint64_t message_id,
+                               const std::function<void(uint64_t)> &cancel_cb_, const std::function<void(uint64_t)> &error_cb_,
+                               const std::function<void(uint64_t)> &timeout_cb_);
+    std::vector<unsigned char>
+    wrap_packet(const std::vector<unsigned char> &message, uint64_t message_id_to_ack, uint64_t *new_message_id);
+    void cancel_cb(uint64_t message_id);
+    void error_cb(uint64_t message_id);
+    void timeout_cb(uint64_t message_id);
 
 protected:
     boost::asio::io_context& _io_context;
@@ -36,9 +65,24 @@ protected:
     boost::asio::io_context::strand _socket_write_strand;
     char _receive_data[max_length]{};
     std::vector<std::thread> _thread_pool;
-    std::deque<std::pair<boost::asio::ip::udp::endpoint ,std::vector<unsigned char>>> _send_data_deque;
+    std::deque<std::tuple<
+        boost::asio::ip::udp::endpoint,
+        std::vector<unsigned char>,
+        uint64_t,    // new mid
+        MessageType
+        >
+    > _send_data_deque;
     bool _running{false};
 
+    uint64_t _message_id{0};
+    std::unordered_map<
+        uint64_t ,
+        std::tuple<
+            boost::asio::steady_timer,
+            std::vector<unsigned char>,
+            boost::asio::ip::udp::endpoint
+        >
+    > _acking_list;
 };
 
 

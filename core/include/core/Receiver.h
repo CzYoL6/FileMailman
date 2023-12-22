@@ -10,8 +10,25 @@
 #include<vector>
 #include <core/BufferBlock.h>
 #include <core/UdpClient.h>
+#include <functional>
+#include <unordered_map>
+#include <algorithm>
 
-    enum { max_length = 1024 , thread_pool_count = 8, slice_size = 1024, block_size = 1024 * 8};
+//template<> struct std::hash<std::pair<int,int>>{
+//size_t operator()(const std::pair<int,int>& v) const{
+//    return v.first ^ v.second;
+//}
+//};
+//
+//template<>
+//struct std::equal_to<std::pair<int,int>>{
+//    bool operator()(const std::pair<int,int>& a, const std::pair<int,int>& b) const{
+//        return a.first == b.first && a.second == b.second;
+//    }
+//};
+
+
+enum { max_length = 1024 , thread_pool_count = 8, slice_size = 1024, block_size = 1024 * 8};
 class Receiver : public UdpClient{
 
 public:
@@ -19,15 +36,20 @@ public:
     ~Receiver() override;
 
 protected:
-    void handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
+    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
+
 
 private:
     void save_block(int id);
 
-    void send_begin_transfer();
-    void send_begin_block(int block_id);
-    void send_require_slice(int block_id, int slice_id);
-    void send_end_transfer();
+    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_transfer();
+    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_block(int block_id);
+    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    generate_require_slice(int block_id, int slice_id);
+    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_end_transfer();
+
+
 
 private:
     std::shared_ptr<std::ofstream> _ofs;

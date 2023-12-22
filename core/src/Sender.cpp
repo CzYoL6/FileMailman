@@ -30,8 +30,9 @@ Sender::Sender(boost::asio::io_context &io_context, uint16_t port, std::string_v
 }
 
 
-void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
-    if(!_running) return;
+std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
+    if(!_running) return{};
     spdlog::info("handling data...");
     auto [clientMsgHeader, load] = Message::GetReceiverHeader(data);
     switch(clientMsgHeader){
@@ -46,7 +47,7 @@ void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char
 
             _receiver_endpoint = endpoint;
 
-            send_begin_transfer_ack(_file_name, (int)_file_size);
+            return generate_begin_transfer_ack(_file_name, (int) _file_size);
             break;
         }
         case Message::ReceiverMsgHeader::kBeginBlock: {
@@ -63,7 +64,7 @@ void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char
             _current_buffer_block = std::make_unique<BufferBlock>(_current_buffer_block_id, slice_size, real_block_size);
             load_block(block_id);
 
-            send_begin_block_ack(block_id);
+            return generate_begin_block_ack(block_id);
             break;
         }
         case Message::ReceiverMsgHeader::kRequireSlice: {
@@ -89,18 +90,17 @@ void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char
 
             std::span<char> slice_data = _current_buffer_block->GetBlockSlice(slice_id)->data_span() ;
 
-            send_slice_data(block_id, slice_id, slice_data);
+            return generate_slice_data(block_id, slice_id, slice_data);
             break;
         }
         case Message::ReceiverMsgHeader::kEndTransfer: {
             assert(load.empty());
             spdlog::info("Receiver Send End Transfer");
 
-            send_end_transfer_ack();
 
             _close_wait_timer.cancel();
             _close_wait_timer.expires_after(std::chrono::seconds (5));
-            _close_wait_timer.async_wait([&](const  boost::system::error_code& ec){
+            _close_wait_timer.async_wait([this](const  boost::system::error_code& ec){
                 if(ec == boost::asio::error::operation_aborted){
                     spdlog::warn("Receive redundant end transfer message, restart timer.");
                 }
@@ -117,6 +117,7 @@ void Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char
             });
 
 
+            return generate_end_transfer_ack();
             break;
         }
         default: {
@@ -142,8 +143,7 @@ Sender::~Sender() {
 
 }
 
-void Sender::send_begin_transfer_ack(const std::string &file_name, int file_size) {
-    spdlog::info("Send begin transfer ack");
+std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_begin_transfer_ack(const std::string &file_name, int file_size) { spdlog::info("Send begin transfer ack");
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kBeginTransferAck_FileMeta   //header
     };
@@ -161,10 +161,10 @@ void Sender::send_begin_transfer_ack(const std::string &file_name, int file_size
     }
     message.insert(message.end(), file_size_.begin(), file_size_.end());
 
-    queue_send_data(_receiver_endpoint, message);
+    return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-void Sender::send_begin_block_ack(int block_id) {
+std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_begin_block_ack(int block_id) {
     spdlog::info("Send begin block ack, block id: {}", block_id);
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kBeginBlockAck,
@@ -173,10 +173,10 @@ void Sender::send_begin_block_ack(int block_id) {
     auto& id_ = reinterpret_cast<std::vector<unsigned char>&>(id);
     message.insert(message.end(), id_.begin(), id_.end());
 
-    queue_send_data(_receiver_endpoint, message);
+    return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-void Sender::send_slice_data(int block_id, int slice_id, std::span<char> slice_data) {
+std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_slice_data(int block_id, int slice_id, std::span<char> slice_data) {
     spdlog::info("Send slice data, block {}, slice {}", block_id, slice_id);
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kSliceData
@@ -186,15 +186,15 @@ void Sender::send_slice_data(int block_id, int slice_id, std::span<char> slice_d
     message.insert(message.end(), ids_.begin(), ids_.end());
     message.insert(message.end(), slice_data.begin(), slice_data.end());
 
-    queue_send_data(_receiver_endpoint, message);
+    return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-void Sender::send_end_transfer_ack() {
+std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_end_transfer_ack() {
     spdlog::info("Send end transfer ack");
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kEndTransferAck
     };
 
-    queue_send_data(_receiver_endpoint, message);
+    return {_receiver_endpoint, std::move(message), kUnreliable};
 }
 

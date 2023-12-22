@@ -113,7 +113,8 @@ Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> d
                     break;
                 }
 
-
+                int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
+                _current_buffer_block = std::make_unique<BufferBlock>(_current_block_id, slice_size, real_block_size);
                 return generate_begin_block(_current_block_id);
                 break;
             }

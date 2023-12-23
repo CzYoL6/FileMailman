@@ -16,12 +16,12 @@ public:
     ~Sender() override;
 
 protected:
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    HandleDataRetValue
     handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_transfer_ack(const std::string &file_name, int file_size);
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_block_ack(int block_id);
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_slice_data(int block_id, int slice_id, std::span<char> slice_data);
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_end_transfer_ack();
+    Sender::HandleDataRetItem generate_begin_transfer_ack(const std::string &file_name, int file_size);
+    Sender::HandleDataRetItem generate_begin_block_ack(int block_id);
+    Sender::HandleDataRetItem generate_slice_data(int block_id, int slice_id, std::span<char> slice_data);
+    Sender::HandleDataRetItem generate_end_transfer_ack();
 
 //public:
 //    void set_current_buffer_block(std::shared_ptr<BufferBlock> buffer_block) { _current_buffer_block = std::move(buffer_block); }

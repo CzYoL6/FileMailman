@@ -21,8 +21,7 @@ Receiver::Receiver(boost::asio::io_context &io_context, std::string_view ip, uin
 
     // send begin transfer message
     auto m = generate_begin_transfer();
-
-    queue_send_data(std::get<0>(m), std::move(std::get<1>(m)), kReliable, 0); // 0, do not need to ack any message
+    queue_send_data(m.endpoint, std::move(m.data), kReliable, 0); // 0, do not need to ack any message
 }
 
 Receiver::~Receiver() {
@@ -31,13 +30,15 @@ Receiver::~Receiver() {
     }
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
-Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
+Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
     if(!_running) return{};
     spdlog::info("handling data...");
     auto [senderMsgHeader, load] = Message::GetSenderHeader(data);
     switch(senderMsgHeader) {
         case Message::SenderMsgHeader::kBeginTransferAck_FileMeta: {
+            // start total time timer
+            _time_point = _total_time_timer.now();
+
             int file_name_size = *(reinterpret_cast<int*>(load.data()));
             assert(file_name_size > 0);
             std::string file_name = {load.data() + sizeof(file_name_size), load.data() + sizeof(file_name_size) + file_name_size};
@@ -121,25 +122,27 @@ Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> d
 
 
             return generate_require_slice(_current_block_id, _current_block_slice_id);
-
             break;
 
         }
         case Message::SenderMsgHeader::kEndTransferAck:{
             spdlog::warn("Message End Transfer is acked, ready to end program");
+            auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(_total_time_timer.now() - _time_point);
+            spdlog::critical("Total time: {} ms, Average Speed: {} KB/s",
+                             total_time.count(),
+                             _file_size / 1024.0/ (total_time.count() / 1000.0));
             clear_acking_list();
             _running = false;
             _ofs->close();
             _io_context.stop();
-            return{};
             break;
         }
         default: {
             spdlog::error("Message parsing failed: wrong header value {}", (uint8_t)senderMsgHeader);
             exit(-1);
-            break;
         }
     }
+    return {};
 }
 
 void Receiver::save_block(int id) {
@@ -149,7 +152,7 @@ void Receiver::save_block(int id) {
     spdlog::info("Save {} bytes' data of block {} (max {}) ", bytes_size, id, _block_count - 1);
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Receiver::generate_begin_transfer() {
+Receiver::HandleDataRetItem Receiver::generate_begin_transfer() {
     spdlog::info("Send Begin Transfer message.");
     std::vector<unsigned char> message = {
             (uint8_t) Message::ReceiverMsgHeader::kBeginTransfer
@@ -157,7 +160,7 @@ std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageTy
     return {_sender_endpoint, std::move(message), kReliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Receiver::generate_begin_block(int block_id) {
+Receiver::HandleDataRetItem Receiver::generate_begin_block(int block_id) {
     spdlog::info(" Send Begin Block message, block id:{}", block_id);
     std::vector<unsigned char> message = {
             (uint8_t) Message::ReceiverMsgHeader::kBeginBlock,
@@ -168,7 +171,7 @@ std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageTy
     return {_sender_endpoint, std::move(message), kReliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+Receiver::HandleDataRetItem
 Receiver::generate_require_slice(int block_id, int slice_id) {
     spdlog::info(" Send Require Slice message, block id:{}, slice id:{}", block_id, slice_id);
     std::vector<unsigned char> message = {
@@ -180,7 +183,7 @@ Receiver::generate_require_slice(int block_id, int slice_id) {
     return {_sender_endpoint, std::move(message), kReliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Receiver::generate_end_transfer() {
+Receiver::HandleDataRetItem Receiver::generate_end_transfer() {
     //End transfer
     spdlog::warn("Transmission of the file is finished, send end transfer message.");
     std::vector<unsigned char> message = {

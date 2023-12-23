@@ -30,7 +30,7 @@ Sender::Sender(boost::asio::io_context &io_context, uint16_t port, std::string_v
 }
 
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+Sender::HandleDataRetValue
 Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
     if(!_running) return{};
     spdlog::info("handling data...");
@@ -127,6 +127,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
         }
     }
 
+    return {};
 }
 
 void Sender::load_block(int id) {
@@ -143,7 +144,7 @@ Sender::~Sender() {
 
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_begin_transfer_ack(const std::string &file_name, int file_size) { spdlog::info("Send begin transfer ack");
+Sender::HandleDataRetItem Sender::generate_begin_transfer_ack(const std::string &file_name, int file_size) { spdlog::info("Send begin transfer ack");
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kBeginTransferAck_FileMeta   //header
     };
@@ -164,7 +165,7 @@ std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageTy
     return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_begin_block_ack(int block_id) {
+Sender::HandleDataRetItem Sender::generate_begin_block_ack(int block_id) {
     spdlog::info("Send begin block ack, block id: {}", block_id);
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kBeginBlockAck,
@@ -176,7 +177,7 @@ std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageTy
     return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_slice_data(int block_id, int slice_id, std::span<char> slice_data) {
+Sender::HandleDataRetItem Sender::generate_slice_data(int block_id, int slice_id, std::span<char> slice_data) {
     spdlog::info("Send slice data, block {}, slice {}", block_id, slice_id);
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kSliceData
@@ -189,7 +190,7 @@ std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageTy
     return {_receiver_endpoint, std::move(message),kUnreliable};
 }
 
-std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> Sender::generate_end_transfer_ack() {
+Sender::HandleDataRetItem Sender::generate_end_transfer_ack() {
     spdlog::info("Send end transfer ack");
     std::vector<unsigned char> message = {
             (uint8_t)Message::SenderMsgHeader::kEndTransferAck

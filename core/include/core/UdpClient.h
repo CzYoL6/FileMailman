@@ -15,7 +15,26 @@ enum MessageType: uint8_t {
     kReliable = 0,
     kUnreliable
 };
-class UdpClient : public std::enable_shared_from_this<UdpClient> {
+class UdpClient {
+protected:
+    struct HandleDataRetItem{
+        boost::asio::ip::udp::endpoint endpoint;
+        std::vector<unsigned char> data;
+        MessageType message_type;
+    };
+    using HandleDataRetValue = std::optional<HandleDataRetItem>;
+
+    struct SendDequeItem{
+        boost::asio::ip::udp::endpoint endpoint;
+        std::vector<unsigned char> data;
+        uint64_t new_message_id;    // new mid
+        MessageType message_type;
+    };
+    struct AckingListItem{
+        boost::asio::steady_timer timer;
+        std::vector<unsigned char> data;
+        boost::asio::ip::udp::endpoint endpoint;
+    };
 
 public:
     enum { max_length = 2048, thread_pool_size = 8, block_size = 1024 * 8, slice_size = 1024};
@@ -31,16 +50,14 @@ protected:
                          MessageType message_type, uint64_t message_id_to_ack);
     void do_receive();
     void do_send();
-    virtual std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    virtual HandleDataRetValue
     handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) =0;
     void send_data_done();
     void clear_acking_list();
 
 private:
-    boost::asio::steady_timer &get_timer(uint64_t message_id);
-    std::vector<unsigned char>& get_data(uint64_t message_id);
-    boost::asio::ip::udp::endpoint &get_endpoint(uint64_t message_id);
-
+    AckingListItem&  get_acking_item(uint64_t message_id);   // no internal multithread protection, do wrap this in strand
+    void remove_acking_item(uint64_t message_id);
 
     static void parse_message_id(std::span<char> data, uint64_t *ack_message_id, uint64_t *new_message_id);
 
@@ -62,27 +79,17 @@ private:
 protected:
     boost::asio::io_context& _io_context;
     boost::asio::ip::udp::socket _socket;
-    boost::asio::io_context::strand _socket_write_strand;
     char _receive_data[max_length]{};
     std::vector<std::thread> _thread_pool;
-    std::deque<std::tuple<
-        boost::asio::ip::udp::endpoint,
-        std::vector<unsigned char>,
-        uint64_t,    // new mid
-        MessageType
-        >
-    > _send_data_deque;
+
+    boost::asio::io_context::strand _send_data_deque_strand;
+    std::deque<SendDequeItem> _send_data_deque;
     bool _running{false};
 
     uint64_t _message_id{0};
-    std::unordered_map<
-        uint64_t ,
-        std::tuple<
-            boost::asio::steady_timer,
-            std::vector<unsigned char>,
-            boost::asio::ip::udp::endpoint
-        >
-    > _acking_list;
+
+    boost::asio::io_context::strand _acking_list_strand;
+    std::unordered_map<uint64_t ,AckingListItem> _acking_list;
 };
 
 

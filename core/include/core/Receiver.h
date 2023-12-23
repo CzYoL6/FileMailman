@@ -36,18 +36,18 @@ public:
     ~Receiver() override;
 
 protected:
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    HandleDataRetValue
     handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) override;
 
 
 private:
     void save_block(int id);
 
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_transfer();
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_begin_block(int block_id);
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType>
+    Receiver::HandleDataRetItem generate_begin_transfer();
+    Receiver::HandleDataRetItem generate_begin_block(int block_id);
+    Receiver::HandleDataRetItem
     generate_require_slice(int block_id, int slice_id);
-    std::tuple<boost::asio::ip::udp::endpoint, std::vector<unsigned char>, MessageType> generate_end_transfer();
+    Receiver::HandleDataRetItem generate_end_transfer();
 
 
 
@@ -61,6 +61,8 @@ private:
     std::unique_ptr<BufferBlock> _current_buffer_block;
     boost::asio::ip::udp::endpoint _sender_endpoint;
 
+    std::chrono::steady_clock _total_time_timer;
+    std::chrono::time_point<std::chrono::steady_clock> _time_point;
 };
 
 

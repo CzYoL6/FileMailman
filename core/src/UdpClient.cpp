@@ -60,7 +60,7 @@ void UdpClient::timeout_cb (uint64_t message_id){
         );
 
         auto& timer = get_acking_item(message_id).timer;
-        timer.expires_after(std::chrono::milliseconds(100));
+        timer.expires_after(std::chrono::milliseconds(500));
         timer.async_wait([message_id, &timer, this](const boost::system::error_code& ec){
             timer_callback(ec, timer, message_id,
                            [this](uint64_t mid){cancel_cb(mid);},
@@ -228,7 +228,7 @@ void UdpClient::launch_retry_timer(uint64_t message_id,
             return;
         }
         boost::asio::steady_timer timer {_io_context};
-        timer.expires_after(std::chrono::milliseconds(500));
+        timer.expires_after(std::chrono::milliseconds(200));
         auto [new_item, _] = _acking_list.emplace(message_id, AckingListItem{std::move(timer), std::move(data_), endpoint});
         new_item->second.timer.async_wait([this, new_item, message_id, cancel_cb_, error_cb_, timeout_cb_](const boost::system::error_code& ec){
             timer_callback(ec, new_item->second.timer, message_id, cancel_cb_, error_cb_, timeout_cb_);

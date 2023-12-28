@@ -8,12 +8,17 @@
 #include <iostream>
 #include <fstream>
 
-Receiver::Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port)
+Receiver::Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port,
+                   const std::function<void()> &finish_progress_cb,
+                   const std::function<void(int, int)> &update_progress_cb)
     : UdpClient(io_context),
-    _sender_endpoint(boost::asio::ip::address::from_string(ip.data()), port),
-    _file_size(0),
-    _block_count(0),
-    _current_buffer_block(std::make_unique<BufferBlock>(0, 0 , 0))
+      _sender_endpoint(boost::asio::ip::address::from_string(ip.data()), port),
+      _file_size(0),
+      _block_count(0),
+      _current_buffer_block(std::make_unique<BufferBlock>(0, 0 , 0)),
+      _update_progress_cb(update_progress_cb),
+      _finish_progress_cb(finish_progress_cb)
+
 {
     spdlog::warn("client launched. ");
 
@@ -51,6 +56,7 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
             _file_size = file_size;
             _file_name = file_name;
             _block_count = (_file_size % block_size == 0) ? _file_size / block_size : _file_size / block_size + 1;
+
             _ofs = std::make_shared<std::ofstream >("copy_" + _file_name, std::ios::binary);
 
 
@@ -107,13 +113,12 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
 
             // check if all slices are received
             if(_current_buffer_block->SliceAllDone()){
-                spdlog::warn("Transmission of block {} is finished, saving data.", _current_block_id);
-                // save the block
-                save_block(_current_block_id);
+                block_finish(_current_block_id);
 
                 // require next block
                 _current_block_id++;
                 if(_current_block_id == _block_count){
+                    _finish_progress_cb();
                     responses.emplace_back(generate_end_transfer());
                     break;
                 }
@@ -193,4 +198,13 @@ Receiver::HandleDataRetItem Receiver::generate_end_transfer() {
             (uint8_t ) Message::ReceiverMsgHeader::kEndTransfer
     };
     return {_sender_endpoint, std::move(message), kReliable};
+}
+
+void Receiver::block_finish(int block_id) {
+    spdlog::warn("Transmission of block {} is finished, saving data.", _current_block_id);
+    // save the block
+    save_block(_current_block_id);
+
+    _update_progress_cb(block_id, _block_count);
+
 }

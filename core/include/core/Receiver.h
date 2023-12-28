@@ -27,12 +27,13 @@
 //    }
 //};
 
-
 enum { max_length = 1024 , thread_pool_count = 8, slice_size = 1024, block_size = 1024 * 8};
 class Receiver : public UdpClient{
 
 public:
-    Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port);
+    Receiver(boost::asio::io_context &io_context, std::string_view ip, uint16_t port,
+             const std::function<void()> &finish_progress_cb,
+             const std::function<void(int, int)> &update_progress_cb);
     ~Receiver() override;
 
 protected:
@@ -48,7 +49,7 @@ private:
     Receiver::HandleDataRetItem
     generate_require_slice(int block_id, int slice_id);
     Receiver::HandleDataRetItem generate_end_transfer();
-
+    void block_finish(int block_id);
 
 
 private:
@@ -62,6 +63,10 @@ private:
 
     std::chrono::steady_clock _total_time_timer;
     std::chrono::time_point<std::chrono::steady_clock> _time_point;
+
+    std::function<void(int, int)> _update_progress_cb;
+    std::function<void()> _finish_progress_cb;
+
 };
 
 

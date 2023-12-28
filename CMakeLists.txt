@@ -26,6 +26,7 @@ project(FileMailman LANGUAGES C CXX)
 
 add_subdirectory(vendor)
 add_subdirectory(core)
+add_subdirectory(app)
 
 enable_testing()
 add_subdirectory(tests)

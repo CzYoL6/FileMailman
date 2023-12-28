@@ -55,8 +55,8 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
             int block_id = *(reinterpret_cast<int*>(load.data()));
             spdlog::info("Receiver Send Begin Block {}", block_id);
 
-            if(block_id == _current_buffer_block_id){
-                spdlog::warn("Transferring of block {} has already begun, redundant packet detected!", block_id);
+            if(block_id != _current_buffer_block_id + 1){
+                spdlog::warn("Transferring of block {} not correct!", block_id);
                 break;
             }
             _current_buffer_block_id = block_id;

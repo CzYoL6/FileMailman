@@ -11,7 +11,7 @@
 
 int main(int argc, char** argv){
 #ifdef WL_RELEASE
-    spdlog::set_level(spdlog::level::critical);
+    spdlog::set_level(spdlog::level::warn);
 #endif
     spdlog::warn("Launching...");
     boost::asio::io_context ioContext;

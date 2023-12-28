@@ -118,7 +118,6 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
                 // require next block
                 _current_block_id++;
                 if(_current_block_id == _block_count){
-                    _finish_progress_cb();
                     responses.emplace_back(generate_end_transfer());
                     break;
                 }
@@ -142,6 +141,7 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
             clear_acking_list();
             _running = false;
             _ofs->close();
+            _finish_progress_cb();
             _io_context.stop();
             break;
         }

@@ -32,7 +32,8 @@ Sender::Sender(boost::asio::io_context &io_context, uint16_t port, std::string_v
 
 Sender::HandleDataRetValue
 Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
-    if(!_running) return{};
+    Sender::HandleDataRetValue responses;
+    if(!_running) return responses;
     spdlog::info("handling data...");
     auto [clientMsgHeader, load] = Message::GetReceiverHeader(data);
     switch(clientMsgHeader){
@@ -47,7 +48,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
 
             _receiver_endpoint = endpoint;
 
-            return generate_begin_transfer_ack(_file_name, (int) _file_size);
+            responses.emplace_back(generate_begin_transfer_ack(_file_name, (int) _file_size));
             break;
         }
         case Message::ReceiverMsgHeader::kBeginBlock: {
@@ -64,7 +65,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
             _current_buffer_block = std::make_unique<BufferBlock>(_current_buffer_block_id, slice_size, real_block_size);
             load_block(block_id);
 
-            return generate_begin_block_ack(block_id);
+            responses.emplace_back(generate_begin_block_ack(block_id));
             break;
         }
         case Message::ReceiverMsgHeader::kRequireSlice: {
@@ -90,7 +91,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
 
             std::span<char> slice_data = _current_buffer_block->GetBlockSlice(slice_id)->data_span() ;
 
-            return generate_slice_data(block_id, slice_id, slice_data);
+            responses.emplace_back(generate_slice_data(block_id, slice_id, slice_data));
             break;
         }
         case Message::ReceiverMsgHeader::kEndTransfer: {
@@ -116,8 +117,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
                 }
             });
 
-
-            return generate_end_transfer_ack();
+            responses.emplace_back(generate_end_transfer_ack());
             break;
         }
         default: {
@@ -127,7 +127,7 @@ Sender::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> dat
         }
     }
 
-    return {};
+    return responses;
 }
 
 void Sender::load_block(int id) {

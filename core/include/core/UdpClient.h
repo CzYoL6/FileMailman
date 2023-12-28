@@ -22,7 +22,7 @@ protected:
         std::vector<unsigned char> data;
         MessageType message_type;
     };
-    using HandleDataRetValue = std::optional<HandleDataRetItem>;
+    using HandleDataRetValue = std::vector<HandleDataRetItem>;
 
     struct SendDequeItem{
         boost::asio::ip::udp::endpoint endpoint;

@@ -107,10 +107,12 @@ void UdpClient::do_receive() {
                     uint64_t ack_message_id, new_message_id;
                     parse_message_id({data_.begin(), data_.end()}, &ack_message_id, &new_message_id);
                     cancel_retry_timer(ack_message_id);
-                    auto response = handle_data(*other_end, {data_.begin() + 2 * sizeof(uint64_t), data_.end()});
-                    if(!response.has_value()) return;
+                    auto responses = handle_data(*other_end, {data_.begin() + 2 * sizeof(uint64_t), data_.end()});
+                    if(responses.empty()) return;
                     if(!_running) return;
-                    queue_send_data(response->endpoint, response->data, response->message_type, new_message_id);
+                    for(const auto& response:responses) {
+                        queue_send_data(response.endpoint, response.data, response.message_type, new_message_id);
+                    }
                 });
 
                 do_receive();

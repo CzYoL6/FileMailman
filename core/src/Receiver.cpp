@@ -31,7 +31,8 @@ Receiver::~Receiver() {
 }
 
 Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoint endpoint, std::span<char> data) {
-    if(!_running) return{};
+    Receiver::HandleDataRetValue responses;
+    if(!_running) return responses;
     spdlog::info("handling data...");
     auto [senderMsgHeader, load] = Message::GetSenderHeader(data);
     switch(senderMsgHeader) {
@@ -57,7 +58,8 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
             _current_block_id = 0;
             int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
             _current_buffer_block = std::make_unique<BufferBlock>(_current_block_id, slice_size, real_block_size);
-            return generate_begin_block(0);
+
+            responses.emplace_back(generate_begin_block(0));
             break;
         }
         case Message::SenderMsgHeader::kBeginBlockAck:{
@@ -70,7 +72,8 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
 
             _current_block_slice_id = 0;
             // start to ask for the first slice in the block
-            return generate_require_slice(_current_block_id, 0);
+
+            responses.emplace_back(generate_require_slice(_current_block_id, 0));
             break;
         }
         case Message::SenderMsgHeader::kSliceData: {
@@ -110,18 +113,18 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
                 // require next block
                 _current_block_id++;
                 if(_current_block_id == _block_count){
-                    return generate_end_transfer();
+                    responses.emplace_back(generate_end_transfer());
                     break;
                 }
 
                 int real_block_size = std::min((int)block_size, (int)(_file_size - _current_block_id * block_size));
                 _current_buffer_block = std::make_unique<BufferBlock>(_current_block_id, slice_size, real_block_size);
-                return generate_begin_block(_current_block_id);
+
+                responses.emplace_back(generate_begin_block(_current_block_id));
                 break;
             }
 
-
-            return generate_require_slice(_current_block_id, _current_block_slice_id);
+            responses.emplace_back(generate_require_slice(_current_block_id, _current_block_slice_id));
             break;
 
         }
@@ -142,7 +145,7 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
             exit(-1);
         }
     }
-    return {};
+    return responses;
 }
 
 void Receiver::save_block(int id) {

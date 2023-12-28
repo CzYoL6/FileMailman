@@ -57,7 +57,6 @@ private:
     uint64_t _block_count;
     std::string _file_name;
     int _current_block_id{ -1};
-    int _current_block_slice_id{ -1};
     std::unique_ptr<BufferBlock> _current_buffer_block;
     boost::asio::ip::udp::endpoint _sender_endpoint;
 

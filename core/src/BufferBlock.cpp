@@ -35,6 +35,7 @@ BufferBlock::~BufferBlock() {
 
 void BufferBlock::ReadFromFile(std::ifstream &ifs, int begin_bytes, int count) {
     assert(ifs.is_open());
+    std::lock_guard<std::mutex> lock(_mutex);
     ifs.seekg(begin_bytes, std::ios::beg);
     ifs.read(_data, count);
 
@@ -42,6 +43,7 @@ void BufferBlock::ReadFromFile(std::ifstream &ifs, int begin_bytes, int count) {
 
 void BufferBlock::WriteToFile(std::ofstream &ofs, int begin_bytes, int count) {
     assert(ofs.is_open());
+    std::lock_guard<std::mutex> lock(_mutex);
     ofs.seekp(begin_bytes, std::ios::beg);
     ofs.write(_data,count);
 
@@ -69,14 +71,17 @@ BufferBlock::BufferBlock(int block_id, int slice_bytes_size, int bytes_size)
 }
 
 bool BufferBlock::IsSliceDone(int id) {
+    std::lock_guard<std::mutex> lock(_mutex);
     return (_bitmap & (1 << id)) > 0;
 }
 
 void BufferBlock::SetSliceDone(int id) {
+    std::lock_guard<std::mutex> lock(_mutex);
     _bitmap |= (1 << id);
 }
 
 bool BufferBlock::SliceAllDone() {
+    std::lock_guard<std::mutex> lock(_mutex);
     for(int i = 0; i < _slice_count; i++){
         if((_bitmap & (1 << i)) == 0) return false;
     }

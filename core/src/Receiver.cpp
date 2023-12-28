@@ -70,10 +70,10 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
                 break;
             }
 
-            _current_block_slice_id = 0;
-            // start to ask for the first slice in the block
-
-            responses.emplace_back(generate_require_slice(_current_block_id, 0));
+            // ask all the slices in the block
+            for(int i = 0; i < _current_buffer_block->slice_count(); i++) {
+                responses.emplace_back(generate_require_slice(_current_block_id, i));
+            }
             break;
         }
         case Message::SenderMsgHeader::kSliceData: {
@@ -83,7 +83,7 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
             int slice_id = *(reinterpret_cast<int *>(load.data() + 4));
             assert(slice_id < _current_buffer_block->slice_count());
 
-            spdlog::info("Receive slice data of slice {} (max {}), block {} (max {})",
+            spdlog::info("Receive slice data of slice {} ({} in total), block {} ({} in total)",
                          slice_id,
                          _current_buffer_block->slice_count() - 1,
                          block_id,
@@ -95,17 +95,18 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
                 break;
             }
 
-            if(slice_id != _current_block_slice_id){
-                spdlog::warn("Not current slice id, redundant packet detected!");
+
+            if(_current_buffer_block->IsSliceDone(slice_id)){
+                spdlog::warn("Slice {} of block {} has already been received!");
                 break;
             }
 
             std::span<char> slice_data(load.begin() + 8, load.end());
             _current_buffer_block->GetBlockSlice(slice_id)->WriteIn(slice_data.data(), slice_data.size());
+            _current_buffer_block->SetSliceDone(slice_id);
 
-            // require the next slice
-            _current_block_slice_id++;
-            if(_current_block_slice_id == _current_buffer_block->slice_count()){
+            // check if all slices are received
+            if(_current_buffer_block->SliceAllDone()){
                 spdlog::warn("Transmission of block {} is finished, saving data.", _current_block_id);
                 // save the block
                 save_block(_current_block_id);
@@ -124,7 +125,6 @@ Receiver::HandleDataRetValue Receiver::handle_data(boost::asio::ip::udp::endpoin
                 break;
             }
 
-            responses.emplace_back(generate_require_slice(_current_block_id, _current_block_slice_id));
             break;
 
         }

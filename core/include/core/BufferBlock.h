@@ -45,6 +45,8 @@ private:
     int _bytes_size;
     int _bitmap{0};
     int _block_id;
+
+    std::mutex _mutex;
 };
 
 class BlockSlice{

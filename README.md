@@ -19,6 +19,8 @@ Only command line is supported. The Sender should be launched first, then the Re
 - File partition: split the file into blocks(a block occupies sequential memory), split a block into slices(a slice only a view to the corresponding memory of the block).
 - Multithread File transfer: transfer all slices in parallel, when all slices in the block is received, continue with the next block.
 
+There is still many bugs remained to be solved. And more tests should be added in the future.
+
 # To Do
 - [ ] refine log system
 - [x] make it multithreaded
